@@ -1,3 +1,4 @@
+use clap::{App, Arg};
 use std::{
     error::Error,
     io::{self, Read},
@@ -6,6 +7,30 @@ use std::{
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let matches = App::new("wcr")
+        .version("0.1.0")
+        .about("A modern word counter written with performance in mind")
+        .arg(
+            Arg::with_name("bytes")
+                .short("c")
+                .long("bytes")
+                .help("print the byte counts"),
+        )
+        .arg(
+            Arg::with_name("lines")
+                .short("l")
+                .long("lines")
+                .help("print the newline counts"),
+        )
+        .arg(
+            Arg::with_name("words")
+                .short("w")
+                .long("words")
+                .help("print the word counts"),
+        )
+        .arg(Arg::with_name("FILE").multiple(true))
+        .get_matches();
+
     let chunk_size = 0x1000000usize;
     let final_count = Arc::new(Mutex::new(wcr::Count::new()));
 
@@ -43,6 +68,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             *thread_count -= 1;
             cvar.notify_one();
         });
+
+        if n < chunk_size {
+            break;
+        }
     }
 
     let _guard = cvar
@@ -55,6 +84,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         count.lines += 1;
     }
 
-    println!("{:?}", count);
+    if matches.is_present("bytes") {
+        println!("{}", count.chars);
+    } else if matches.is_present("lines") {
+        println!("{}", count.lines);
+    } else if matches.is_present("words") {
+        println!("{}", count.words);
+    } else {
+        println!("{:?}", count);
+    }
     Ok(())
 }
